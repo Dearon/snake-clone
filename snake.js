@@ -65,11 +65,19 @@ function movement() {
 
 function collision() {
     if (snake.x < 0 || snake.x > width || snake.y < 0 || snake.y > height) {
+        direction = 'right';
         snake.x = width/2;
         snake.y = height/2;
 
         score = 0;
         scoreText.setText("Score: " + score);
+
+        for (var i = 0; i < dots.length; i++) {
+            stage.removeChild(dots[i]);
+        }
+
+        dots = [];
+        dotTime = 0;
     }
 
     for (var i = 0; i < dots.length; i++) {
@@ -92,9 +100,8 @@ function collision() {
 }
 
 function addScoreDot() {
-    var time = Date.now();
-    if (dotTime + dotInterval < time) {
-        dotTime = time;
+    if (dotTime + dotInterval < Date.now()) {
+        dotTime = Date.now();
         var dot = new PIXI.Graphics();
         dot.beginFill(0x000000);
         dot.drawCircle(0, 0, 10);
