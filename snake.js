@@ -3,6 +3,7 @@ var height = 400;
 var direction = 'right';
 var speed = 2.5;
 var score = 0;
+var dotInterval = 4 * 1000; // Milliseconds
 
 var stage = new PIXI.Stage(0xFFFFFF);
 var renderer = PIXI.autoDetectRenderer(width, height);
@@ -23,6 +24,7 @@ snake.y = height/2;
 stage.addChild(snake);
 
 var dots = [];
+var dotTime = 0;
 
 main();
 
@@ -30,6 +32,7 @@ function main() {
     input();
     movement();
     collision();
+    addScoreDot();
     requestAnimFrame(animate);
 }
 
@@ -51,8 +54,6 @@ function input() {
     KeyboardJS.on('down', function() {
         if (direction != 'up') { direction = 'down'; }
     });
-
-    KeyboardJS.on('a', function() { addScoreDot(); });
 }
 
 function movement() {
@@ -91,13 +92,17 @@ function collision() {
 }
 
 function addScoreDot() {
-    var dot = new PIXI.Graphics();
-    dot.beginFill(0x000000);
-    dot.drawCircle(0, 0, 10);
-    dot.endFill();
+    var time = Date.now();
+    if (dotTime + dotInterval < time) {
+        dotTime = time;
+        var dot = new PIXI.Graphics();
+        dot.beginFill(0x000000);
+        dot.drawCircle(0, 0, 10);
+        dot.endFill();
 
-    dot.x = Math.random() * ((width - 10) - 10) + 10;
-    dot.y = Math.random() * ((height - 10) - 10) + 10;
-    stage.addChild(dot);
-    dots.push(dot);
+        dot.x = Math.random() * ((width - 10) - 10) + 10;
+        dot.y = Math.random() * ((height - 10) - 10) + 10;
+        stage.addChild(dot);
+        dots.push(dot);
+    }
 }
