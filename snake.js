@@ -65,23 +65,23 @@ function movement() {
 
 function collision() {
     if (snake.x < 0 || snake.x > width || snake.y < 0 || snake.y > height) {
-        try {
-            direction = 'right';
-            snake.x = width/2;
-            snake.y = height/2;
+        direction = 'right';
+        snake.x = width/2;
+        snake.y = height/2;
 
-            score = 0;
-            scoreText.setText("Score: " + score);
+        score = 0;
+        scoreText.setText("Score: " + score);
 
-            for (var i = 0; i < dots.length; i++) {
+        for (var i = 0; i < dots.length; i++) {
+            try {
                 stage.removeChild(dots[i]);
+            } catch(e) {
+                // Sometimes it tries to remove non-existent dots 
             }
-
-            dots = [];
-            dotTime = 0;
-        } catch(e) {
-            // Somtimes this one triggers multiple times as well
         }
+
+        dots = [];
+        dotTime = 0;
     }
 
     for (var i = 0; i < dots.length; i++) {
