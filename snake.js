@@ -71,22 +71,46 @@ function draw() {
 
 // See if the player wants to change the direction of the snake
 function handleInput() {
-    KeyboardJS.on('left', function() { direction = 'left'; });
-    KeyboardJS.on('right', function() { direction = 'right'; });
-    KeyboardJS.on('up', function() { direction = 'up'; });
-    KeyboardJS.on('down', function() { direction = 'down' });
+    KeyboardJS.on('left', function() {
+        if (direction != 'right') { direction = 'left'; }
+    });
+    KeyboardJS.on('right', function() {
+        if (direction != 'left') { direction = 'right'; }
+    });
+    KeyboardJS.on('up', function() {
+        if (direction != 'down') { direction = 'up'; }
+    });
+    KeyboardJS.on('down', function() {
+        if (direction != 'up') { direction = 'down'; }
+    });
 }
 
-// Moves the snake
+// Moves the snake and check for collisions
 function moveSnake() {
     if (timestamp + speed < Date.now()) {
         timestamp = Date.now();
-
         grid[snakeX][snakeY] = '';
+
         if (direction == 'right') { snakeX += 1; }
         if (direction == 'left') { snakeX -= 1; }
         if (direction == 'up') { snakeY -= 1; }
         if (direction == 'down') { snakeY += 1; }
-        grid[snakeX][snakeY] = snake;
+
+        // Check for collisions with the wall
+        if (snakeX < 0 || snakeX >= (WIDTH / 10) || snakeY < 0 || snakeY >= (HEIGHT / 10)) {
+            reset();
+        } else {
+            grid[snakeX][snakeY] = snake;
+        }
     }
+}
+
+// Reset the game
+function reset() {
+    speed = STARTING_SPEED;
+    direction = STARTING_DIRECTION;
+    timestamp = Date.now() + (0.5 * 1000);
+    snakeX = grid.length / 2;
+    snakeY = grid[snakeX].length / 2;
+    grid[snakeX][snakeY] = snake;
 }
