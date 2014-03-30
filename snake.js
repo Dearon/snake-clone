@@ -1,119 +1,92 @@
-var width = 600;
-var height = 400;
-var direction = 'right';
-var speed = 2.5;
-var score = 0;
-var dotInterval = 4 * 1000; // Milliseconds
+// Constants
+var WIDTH = 600;
+var HEIGHT = 400;
+var COLORS = [
+    "0x0F380F",
+    "0x306230",
+    "0x8BAC0F",
+    "0x9BBC0F"
+];
+var STARTING_SPEED = 0.2 * 1000; // Milliseconds
+var STARTING_DIRECTION = 'right';
 
-var stage = new PIXI.Stage(0xFFFFFF);
-var renderer = PIXI.autoDetectRenderer(width, height);
-document.body.appendChild(renderer.view);
-
-var scoreText = new PIXI.Text("Score: " + score);
-scoreText.x = 10;
-scoreText.y = 10;
-stage.addChild(scoreText);
-
-var snake = new PIXI.Graphics();
-snake.beginFill(0x000000);
-snake.drawCircle(0, 0, 10);
-snake.endFill();
-
-snake.x = width/2;
-snake.y = height/2;
-stage.addChild(snake);
-
-var dots = [];
-var dotTime = 0;
-
-main();
-
-function main() {
-    input();
-    movement();
-    collision();
-    addScoreDot();
-    requestAnimFrame(animate);
+// The in-game grid
+var grid = [];
+for (var i = 0; i < (WIDTH/10); i++) {
+    grid[i] = [];
+    for (var j = 0; j < (HEIGHT/10); j++) {
+        grid[i][j] = "";
+    }
 }
 
-function animate() {
+// Setting up Pixi
+var stage = new PIXI.Stage(COLORS[3]);
+var renderer = PIXI.autoDetectRenderer(WIDTH, HEIGHT);
+var gameDiv = document.getElementById("game");
+gameDiv.appendChild(renderer.view);
+
+// Set misc variables
+var speed = STARTING_SPEED;
+var direction = STARTING_DIRECTION;
+var timestamp = 0;
+
+// Create the snake and add it to the stage
+var snake = new PIXI.Graphics();
+snake.beginFill(COLORS[0]);
+snake.drawRect(0, 0, 10, 10);
+snake.endFill();
+stage.addChild(snake);
+
+// Add the snake to the center of the grid
+var snakeX = grid.length / 2;
+var snakeY = grid[snakeX].length / 2;
+grid[snakeX][snakeY] = snake;
+
+// Start the core loop
+main();
+function main() {
+    handleInput();
+    moveSnake();
+    setLocation();
+    requestAnimFrame(draw);
+}
+
+// Sets the correct x and y for an object depending on their location in the grid array
+function setLocation() {
+    for (var x = 0; x < grid.length; x++) {
+        for (var y = 0; y < grid[x].length; y++) {
+            if (grid[x][y] != '') {
+                grid[x][y].x = x * 10;
+                grid[x][y].y = y * 10;
+            }
+        }
+    }
+}
+
+// Put everything on the screen
+function draw() {
     renderer.render(stage);
     main();
 }
 
-function input() {
-    KeyboardJS.on('left', function() { 
-        if (direction != 'right') { direction = 'left'; }
-    });
-    KeyboardJS.on('right', function() {
-        if (direction != 'left') { direction = 'right'; }
-    });
-    KeyboardJS.on('up', function() {
-        if (direction != 'down') { direction = 'up'; }
-    });
-    KeyboardJS.on('down', function() {
-        if (direction != 'up') { direction = 'down'; }
-    });
+// See if the player wants to change the direction of the snake
+function handleInput() {
+    KeyboardJS.on('left', function() { direction = 'left'; });
+    KeyboardJS.on('right', function() { direction = 'right'; });
+    KeyboardJS.on('up', function() { direction = 'up'; });
+    KeyboardJS.on('down', function() { direction = 'down' });
 }
 
-function movement() {
-    if (direction == 'left') { snake.x -= speed; }
-    if (direction == 'right') { snake.x += speed; }
-    if (direction == 'up') { snake.y -= speed; }
-    if (direction == 'down') { snake.y += speed; }
-}
+// Moves the snake
+function moveSnake() {
+    if (timestamp + speed < Date.now()) {
+        timestamp = Date.now();
 
-function collision() {
-    if (snake.x < 0 || snake.x > width || snake.y < 0 || snake.y > height) {
-        direction = 'right';
-        snake.x = width/2;
-        snake.y = height/2;
-
-        score = 0;
-        scoreText.setText("Score: " + score);
-
-        for (var i = 0; i < dots.length; i++) {
-            try {
-                stage.removeChild(dots[i]);
-            } catch(e) {
-                // Sometimes it tries to remove non-existent dots 
-            }
-        }
-
-        dots = [];
-        dotTime = 0;
-    }
-
-    for (var i = 0; i < dots.length; i++) {
-        if (snake.x >= (dots[i].x - 10) && 
-            snake.x <= (dots[i].x + 10) &&
-            snake.y >= (dots[i].y - 10) &&
-            snake.y <= (dots[i].y + 10)) {
-                try {
-                    stage.removeChild(dots[i]);
-                    dots.slice(i, 2);
-                    score += 1;
-                    scoreText.setText("Score: " + score);
-                } catch(e) {
-                    // The collision will trigger multiple times since JS is async
-                    // So if we get here it's because we are trying to remove a child from
-                    // stage whom doesn't exist any more
-                }
-        }
-    }
-}
-
-function addScoreDot() {
-    if (dotTime + dotInterval < Date.now()) {
-        dotTime = Date.now();
-        var dot = new PIXI.Graphics();
-        dot.beginFill(0x000000);
-        dot.drawCircle(0, 0, 10);
-        dot.endFill();
-
-        dot.x = Math.random() * ((width - 10) - 10) + 10;
-        dot.y = Math.random() * ((height - 10) - 10) + 10;
-        stage.addChild(dot);
-        dots.push(dot);
+        grid[snakeX][snakeY] = '';
+        if (direction == 'right') { snakeX += 1; }
+        if (direction == 'left') { snakeX -= 1; }
+        if (direction == 'up') { snakeY -= 1; }
+        if (direction == 'down') { snakeY += 1; }
+        grid[snakeX][snakeY] = snake;
     }
 }

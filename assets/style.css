@@ -9,3 +9,10 @@ html, body {
     align-items: center;
     justify-content: center;
 }
+
+#game {
+    line-height: 0;
+    border-color: #0F380F;
+    border-style: solid;
+    border-width: 4px;
+}
