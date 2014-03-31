@@ -7,8 +7,9 @@ var COLORS = [
     "0x8BAC0F",
     "0x9BBC0F"
 ];
-var STARTING_SPEED = 0.2 * 1000; // Milliseconds
-var STARTING_DIRECTION = 'right';
+var MOVEMENT_SPEED = 0.2 * 1000; // Seconds to milliseconds
+var MOVEMENT_DIRECTION = 'right';
+var POINT_SPEED = 5 * 1000 // Seconds to milliseconds
 
 // The in-game grid
 var grid = [];
@@ -25,11 +26,6 @@ var renderer = PIXI.autoDetectRenderer(WIDTH, HEIGHT);
 var gameDiv = document.getElementById("game");
 gameDiv.appendChild(renderer.view);
 
-// Set misc variables
-var speed = STARTING_SPEED;
-var direction = STARTING_DIRECTION;
-var timestamp = 0;
-
 // Create the snake and add it to the stage
 var snake = new PIXI.Graphics();
 snake.beginFill(COLORS[0]);
@@ -37,7 +33,14 @@ snake.drawRect(0, 0, 10, 10);
 snake.endFill();
 stage.addChild(snake);
 
-// Add the snake to the center of the grid
+// Set the basic variables and reset the timestamp to trigger right away
+var movementSpeed = MOVEMENT_SPEED;
+var direction = MOVEMENT_DIRECTION;
+var movementTimestamp = Date.now();
+var pointSpeed = POINT_SPEED;
+var pointTimestamp = Date.now() - (POINT_SPEED);
+var points = [];
+var score = 0;
 var snakeX = grid.length / 2;
 var snakeY = grid[snakeX].length / 2;
 grid[snakeX][snakeY] = snake;
@@ -47,6 +50,7 @@ main();
 function main() {
     handleInput();
     moveSnake();
+    addPoints();
     setLocation();
     requestAnimFrame(draw);
 }
@@ -87,8 +91,8 @@ function handleInput() {
 
 // Moves the snake and check for collisions
 function moveSnake() {
-    if (timestamp + speed < Date.now()) {
-        timestamp = Date.now();
+    if (movementTimestamp + movementSpeed < Date.now()) {
+        movementTimestamp = Date.now();
         grid[snakeX][snakeY] = '';
 
         if (direction == 'right') { snakeX += 1; }
@@ -99,18 +103,73 @@ function moveSnake() {
         // Check for collisions with the wall
         if (snakeX < 0 || snakeX >= (WIDTH / 10) || snakeY < 0 || snakeY >= (HEIGHT / 10)) {
             reset();
+        // Check for collision with a point
+        } else if (grid[snakeX][snakeY] != '') {
+            for (var i = 0; i < points.length; i++) {
+                if (points[i][0] == snakeX && points[i][1] == snakeY) {
+                    score += 1;
+                    stage.removeChild(grid[snakeX][snakeY]);
+                    points.splice(i, 1);
+                    grid[snakeX][snakeY] = snake;
+                }
+            }
         } else {
             grid[snakeX][snakeY] = snake;
         }
     }
 }
 
+// Add points to the grid
+function addPoints() {
+    var random = function(grid) {
+        var x = Math.floor(Math.random() * (grid.length));
+        var y = Math.floor(Math.random() * (grid[x].length));
+
+        return [x, y];
+    }
+
+    if (pointTimestamp + pointSpeed < Date.now()) {
+        pointTimestamp = Date.now();
+
+        var xy = random(grid);
+        var x = xy[0];
+        var y = xy[1];
+
+        if (grid[x][y] == '') {
+            var point = new PIXI.Graphics();
+            point.beginFill(COLORS[1]);
+            point.drawRect(0, 0, 10, 10);
+            point.endFill();
+            stage.addChild(point);
+
+            grid[x][y] = point;
+            points.push([x, y]);
+        } else {
+            pointTimestamp = 0;
+            addPoints();
+        }
+    }
+}
+
 // Reset the game
 function reset() {
-    speed = STARTING_SPEED;
-    direction = STARTING_DIRECTION;
-    timestamp = Date.now() + (0.5 * 1000);
+    // Remove all the point dots from the map
+    for (var i = 0; i < points.length; i++) {
+        var x = points[i][0];
+        var y = points[i][1];
+        stage.removeChild(grid[x][y]);
+        grid[x][y] = '';
+    }
+
+    // Reset variables to the default values    
+    movementSpeed = MOVEMENT_SPEED;
+    direction = MOVEMENT_DIRECTION;
+    movementTimestamp = Date.now() + (0.5 * 1000);
+    pointSpeed = POINT_SPEED;
+    pointTimestamp = Date.now() - (POINT_SPEED);
+    points = [];
     snakeX = grid.length / 2;
     snakeY = grid[snakeX].length / 2;
     grid[snakeX][snakeY] = snake;
+    score = 0;
 }
