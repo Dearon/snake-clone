@@ -45,6 +45,12 @@ var snakeX = grid.length / 2;
 var snakeY = grid[snakeX].length / 2;
 grid[snakeX][snakeY] = snake;
 
+// Create the score text and add it to the stage
+var scoreText = new PIXI.Text("Score: " + score, { font: "14px Arial" });
+scoreText.x = 10;
+scoreText.y = 10;
+stage.addChild(scoreText);
+
 // Start the core loop
 main();
 function main() {
@@ -108,6 +114,7 @@ function moveSnake() {
             for (var i = 0; i < points.length; i++) {
                 if (points[i][0] == snakeX && points[i][1] == snakeY) {
                     score += 1;
+                    scoreText.setText("Score: " + score);
                     stage.removeChild(grid[snakeX][snakeY]);
                     points.splice(i, 1);
                     grid[snakeX][snakeY] = snake;
@@ -172,4 +179,7 @@ function reset() {
     snakeY = grid[snakeX].length / 2;
     grid[snakeX][snakeY] = snake;
     score = 0;
+
+    // Reset the score text
+    scoreText.setText("Score: " + score);
 }
