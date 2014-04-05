@@ -43,6 +43,7 @@ var points = [];
 var score = 0;
 var snakeX = grid.length / 2;
 var snakeY = grid[snakeX].length / 2;
+var snakeBody = [[snakeX, snakeY]];
 grid[snakeX][snakeY] = snake;
 
 // Create the score text and add it to the stage
@@ -99,29 +100,63 @@ function handleInput() {
 function moveSnake() {
     if (movementTimestamp + movementSpeed < Date.now()) {
         movementTimestamp = Date.now();
-        grid[snakeX][snakeY] = '';
+        var doReset = false;
 
         if (direction == 'right') { snakeX += 1; }
         if (direction == 'left') { snakeX -= 1; }
         if (direction == 'up') { snakeY -= 1; }
         if (direction == 'down') { snakeY += 1; }
 
-        // Check for collisions with the wall
-        if (snakeX < 0 || snakeX >= (WIDTH / 10) || snakeY < 0 || snakeY >= (HEIGHT / 10)) {
-            reset();
-        // Check for collision with a point
-        } else if (grid[snakeX][snakeY] != '') {
-            for (var i = 0; i < points.length; i++) {
-                if (points[i][0] == snakeX && points[i][1] == snakeY) {
-                    score += 1;
-                    scoreText.setText("Score: " + score);
-                    stage.removeChild(grid[snakeX][snakeY]);
-                    points.splice(i, 1);
-                    grid[snakeX][snakeY] = snake;
+        var newPos = [snakeX, snakeY];
+        var oldPos = [];
+
+        if (newPos[0] < 0 || newPos[0] >= (WIDTH / 10) || newPos[1] < 0 || newPos[1] >= (HEIGHT / 10)) {
+            doReset = true;
+        } else {
+            // Check for collision with a point
+            if (grid[snakeX][snakeY] != '') {
+                doReset = true;
+
+                for (var i = 0; i < points.length; i++) {
+                    if (points[i][0] == newPos[0] && points[i][1] == newPos[1]) {
+                        score += 1;
+                        scoreText.setText("Score: " + score);
+                        stage.removeChild(grid[snakeX][snakeY]);
+                        points.splice(i, 1);
+
+                        var part = new PIXI.Graphics();
+                        part.beginFill(COLORS[0]);
+                        part.drawRect(0, 0, 10, 10);
+                        part.endFill();
+                        stage.addChild(part);
+                        snakeBody.push([0, 0]);
+                        grid[0][0] = part;
+
+                        doReset = false;
+                    }
                 }
             }
+        } 
+
+        if (doReset) {
+            reset();
         } else {
-            grid[snakeX][snakeY] = snake;
+            for (var i = 0; i < snakeBody.length; i++) {
+                var oldPos = snakeBody[i];
+
+                var x = oldPos[0];
+                var y = oldPos[1];
+
+                var part = grid[x][y];
+                grid[x][y] = '';
+
+                x = newPos[0];
+                y = newPos[1];
+
+                grid[x][y] = part;
+                snakeBody[i] = newPos;
+                newPos = oldPos;
+            }
         }
     }
 }
@@ -168,6 +203,18 @@ function reset() {
         grid[x][y] = '';
     }
 
+    // Remove the snake body parts from the map
+    for (var i = 0; i < snakeBody.length; i++) {
+        var x = snakeBody[i][0];
+        var y = snakeBody[i][1];
+
+        if (i > 0) {
+            stage.removeChild(grid[x][y]);
+        }
+
+        grid[x][y] = '';
+    }
+
     // Reset variables to the default values    
     movementSpeed = MOVEMENT_SPEED;
     direction = MOVEMENT_DIRECTION;
@@ -177,6 +224,7 @@ function reset() {
     points = [];
     snakeX = grid.length / 2;
     snakeY = grid[snakeX].length / 2;
+    snakeBody = [[snakeX, snakeY]];
     grid[snakeX][snakeY] = snake;
     score = 0;
 
