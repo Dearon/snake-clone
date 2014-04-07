@@ -27,7 +27,7 @@ var renderer = PIXI.autoDetectRenderer(WIDTH, HEIGHT);
 var gameDiv = document.getElementById("game");
 gameDiv.appendChild(renderer.view);
 
-// Set the basic variables and reset the timestamp to trigger right away
+// Set variables used to make the game work
 var movementSpeed = MOVEMENT_SPEED;
 var direction = MOVEMENT_DIRECTION;
 var movementTimestamp = Date.now();
@@ -39,14 +39,16 @@ var coords = {
     "points": []
 }
 
+// Add the first part of the snake
 coords.snake.push(createDot([grid.length/2, grid[0].length/2], COLORS[0]))
 
-// Create the score text and add it to the stage
+// Create the score text
 var scoreText = new PIXI.Text("Score: " + score, { font: "14px Arial" });
 scoreText.x = 10;
 scoreText.y = 10;
 stage.addChild(scoreText);
 
+// Start looping the core loop
 main();
 function main() {
     handleInput();
@@ -57,6 +59,7 @@ function main() {
     requestAnimFrame(main);
 }
 
+// Find a random unused coordinate in the grid
 function randomCoord() {
     var x = Math.floor(Math.random() * (grid.length));
     var y = Math.floor(Math.random() * (grid[x].length));
@@ -68,6 +71,9 @@ function randomCoord() {
     }
 }
 
+// Create a dot (e.g. a snake part)
+// localCoord can be a empty array for a random coordinate or a predefined one through [x, y]
+// Color is a string containing a RGB code
 function createDot(localCoords, color) {
     var dot = new PIXI.Graphics();
     dot.beginFill(color);
@@ -87,6 +93,7 @@ function createDot(localCoords, color) {
     return localCoords;
 }
 
+// Set the correct x and y for an object based on the grid coordinate
 function translateCoords() {
     for (var x = 0; x < grid.length; x++) {
         for (var y = 0; y < grid[x].length; y++) {
@@ -98,6 +105,7 @@ function translateCoords() {
     }
 }
 
+// Check if a coordinate falls outside of the grid
 function wallCollision(localCoords) {
     if (localCoords[0] < 0 || localCoords[0] >= (WIDTH / TILE_SIZE) || localCoords[1] < 0 || localCoords[1] >= (HEIGHT / TILE_SIZE)) {
         return true;
@@ -105,6 +113,7 @@ function wallCollision(localCoords) {
     return false;
 }
 
+// Check if a coordinate currently holds a point
 function pointCollision(localCoords) {
     for (var i = 0; i < coords.points.length; i++) {
         var x = coords.points[i][0];
@@ -117,6 +126,7 @@ function pointCollision(localCoords) {
     return false;
 }
 
+// If a coordinate holds a point then remove the point, add one score point and add a snake part
 function handlePointCollision(localCoords) {
     for (var i = 0; i < coords.points.length; i++) {
         var x = coords.points[i][0];
@@ -134,6 +144,7 @@ function handlePointCollision(localCoords) {
     }
 }
 
+// Check if a coordinate holds a part of the snake
 function bodyCollision(localCoords) {
     for (var i = 0; i < coords.snake.length; i++) {
         var x = coords.snake[i][0];
@@ -146,6 +157,7 @@ function bodyCollision(localCoords) {
     return false;
 }
 
+// Allows the user to change directions
 function handleInput() {
     KeyboardJS.on('left', function() {
         if (direction != 'right') { direction = 'left'; }
@@ -161,6 +173,7 @@ function handleInput() {
     });
 }
 
+// Checks collisions for the new coordinate and then either resets or moves the snake depending on the collision results
 function moveSnake() {
     if (movementTimestamp + movementSpeed < Date.now()) {
         movementTimestamp = Date.now();
@@ -204,6 +217,7 @@ function moveSnake() {
     }
 }
 
+// Adds a point to the grid
 function addPoint() {
     if (pointTimestamp + pointSpeed < Date.now()) {
         pointTimestamp = Date.now();
@@ -211,6 +225,7 @@ function addPoint() {
     }
 }
 
+// Resets the game to the default settings
 function reset() {
     for (var i = 0; i < coords.points.length; i++) {
         var x = coords.points[i][0];
