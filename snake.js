@@ -1,6 +1,7 @@
 // Constants
 var WIDTH = 600;
 var HEIGHT = 400;
+var TILE_SIZE = 10;
 var COLORS = [
     "0x0F380F",
     "0x306230",
@@ -11,11 +12,11 @@ var MOVEMENT_SPEED = 0.2 * 1000; // Seconds to milliseconds
 var MOVEMENT_DIRECTION = 'right';
 var POINT_SPEED = 5 * 1000 // Seconds to milliseconds
 
-// The in-game grid
+// Create the grid
 var grid = [];
-for (var i = 0; i < (WIDTH/10); i++) {
+for (var i = 0; i < (WIDTH/TILE_SIZE); i++) {
     grid[i] = [];
-    for (var j = 0; j < (HEIGHT/10); j++) {
+    for (var j = 0; j < (HEIGHT/TILE_SIZE); j++) {
         grid[i][j] = "";
     }
 }
@@ -26,25 +27,19 @@ var renderer = PIXI.autoDetectRenderer(WIDTH, HEIGHT);
 var gameDiv = document.getElementById("game");
 gameDiv.appendChild(renderer.view);
 
-// Create the snake and add it to the stage
-var snake = new PIXI.Graphics();
-snake.beginFill(COLORS[0]);
-snake.drawRect(0, 0, 10, 10);
-snake.endFill();
-stage.addChild(snake);
-
 // Set the basic variables and reset the timestamp to trigger right away
 var movementSpeed = MOVEMENT_SPEED;
 var direction = MOVEMENT_DIRECTION;
 var movementTimestamp = Date.now();
 var pointSpeed = POINT_SPEED;
 var pointTimestamp = Date.now() - (POINT_SPEED);
-var points = [];
 var score = 0;
-var snakeX = grid.length / 2;
-var snakeY = grid[snakeX].length / 2;
-var snakeBody = [[snakeX, snakeY]];
-grid[snakeX][snakeY] = snake;
+var coords = {
+    "snake": [],
+    "points": []
+}
+
+coords.snake.push(createDot([grid.length/2, grid[0].length/2], COLORS[0]))
 
 // Create the score text and add it to the stage
 var scoreText = new PIXI.Text("Score: " + score, { font: "14px Arial" });
@@ -52,35 +47,105 @@ scoreText.x = 10;
 scoreText.y = 10;
 stage.addChild(scoreText);
 
-// Start the core loop
 main();
 function main() {
     handleInput();
     moveSnake();
-    addPoints();
-    setLocation();
-    requestAnimFrame(draw);
+    addPoint();
+    translateCoords();
+    renderer.render(stage);
+    requestAnimFrame(main);
 }
 
-// Sets the correct x and y for an object depending on their location in the grid array
-function setLocation() {
+function randomCoord() {
+    var x = Math.floor(Math.random() * (grid.length));
+    var y = Math.floor(Math.random() * (grid[x].length));
+
+    if (grid[x][y] == '') {
+        return [x, y];
+    } else {
+        return randomCoord();
+    }
+}
+
+function createDot(localCoords, color) {
+    var dot = new PIXI.Graphics();
+    dot.beginFill(color);
+    dot.drawRect(0, 0, 10, 10);
+    dot.endFill();
+
+    if (localCoords.length == 0) {
+        localCoords = randomCoord();
+    }
+
+    x = localCoords[0];
+    y = localCoords[1];
+
+    stage.addChild(dot);
+    grid[x][y] = dot;
+
+    return localCoords;
+}
+
+function translateCoords() {
     for (var x = 0; x < grid.length; x++) {
         for (var y = 0; y < grid[x].length; y++) {
             if (grid[x][y] != '') {
-                grid[x][y].x = x * 10;
-                grid[x][y].y = y * 10;
+                grid[x][y].x = x * TILE_SIZE;
+                grid[x][y].y = y * TILE_SIZE;
             }
         }
     }
 }
 
-// Put everything on the screen
-function draw() {
-    renderer.render(stage);
-    main();
+function wallCollision(localCoords) {
+    if (localCoords[0] < 0 || localCoords[0] >= (WIDTH / TILE_SIZE) || localCoords[1] < 0 || localCoords[1] >= (HEIGHT / TILE_SIZE)) {
+        return true;
+    }
+    return false;
 }
 
-// See if the player wants to change the direction of the snake
+function pointCollision(localCoords) {
+    for (var i = 0; i < coords.points.length; i++) {
+        var x = coords.points[i][0];
+        var y = coords.points[i][1];
+
+        if (localCoords[0] == x && localCoords[1] == y) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function handlePointCollision(localCoords) {
+    for (var i = 0; i < coords.points.length; i++) {
+        var x = coords.points[i][0];
+        var y = coords.points[i][1];
+
+        if (localCoords[0] == x && localCoords[1] == y) {
+            score += 1;
+            scoreText.setText("Score: " + score);
+
+            stage.removeChild(grid[x][y]);
+            coords.points.splice(i, 1);
+
+            coords.snake.push(createDot([], COLORS[0]));
+        }
+    }
+}
+
+function bodyCollision(localCoords) {
+    for (var i = 0; i < coords.snake.length; i++) {
+        var x = coords.snake[i][0];
+        var y = coords.snake[i][1];
+
+        if (localCoords[0] == x && localCoords[1] == y) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function handleInput() {
     KeyboardJS.on('left', function() {
         if (direction != 'right') { direction = 'left'; }
@@ -96,122 +161,68 @@ function handleInput() {
     });
 }
 
-// Moves the snake and check for collisions
 function moveSnake() {
     if (movementTimestamp + movementSpeed < Date.now()) {
         movementTimestamp = Date.now();
-        var doReset = false;
 
-        if (direction == 'right') { snakeX += 1; }
-        if (direction == 'left') { snakeX -= 1; }
-        if (direction == 'up') { snakeY -= 1; }
-        if (direction == 'down') { snakeY += 1; }
+        var willReset = false;
+        var newCoords = [coords.snake[0][0], coords.snake[0][1]];
+        var oldCoords = [];
 
-        var newPos = [snakeX, snakeY];
-        var oldPos = [];
+        if (direction == 'right') { newCoords[0] += 1; }
+        if (direction == 'left') { newCoords[0] -= 1; }
+        if (direction == 'up') { newCoords[1] -= 1; }
+        if (direction == 'down') { newCoords[1] += 1; }
 
-        if (newPos[0] < 0 || newPos[0] >= (WIDTH / 10) || newPos[1] < 0 || newPos[1] >= (HEIGHT / 10)) {
-            doReset = true;
+        if (wallCollision(newCoords)) {
+            willReset = true;
         } else {
-            // Check for collision with a point
-            if (grid[snakeX][snakeY] != '') {
-                doReset = true;
+            if (grid[newCoords[0]][newCoords[1]] != '') {
+                if (pointCollision(newCoords)) {
+                    handlePointCollision(newCoords);
+                }
 
-                for (var i = 0; i < points.length; i++) {
-                    if (points[i][0] == newPos[0] && points[i][1] == newPos[1]) {
-                        score += 1;
-                        scoreText.setText("Score: " + score);
-                        stage.removeChild(grid[snakeX][snakeY]);
-                        points.splice(i, 1);
-
-                        var part = new PIXI.Graphics();
-                        part.beginFill(COLORS[0]);
-                        part.drawRect(0, 0, 10, 10);
-                        part.endFill();
-                        stage.addChild(part);
-                        snakeBody.push([0, 0]);
-                        grid[0][0] = part;
-
-                        doReset = false;
-                    }
+                if (bodyCollision(newCoords)) {
+                    willReset = true;
                 }
             }
-        } 
+        }
 
-        if (doReset) {
+        if (willReset) {
             reset();
         } else {
-            for (var i = 0; i < snakeBody.length; i++) {
-                var oldPos = snakeBody[i];
+            for (var i = 0; i < coords.snake.length; i++) {
+                oldCoords = coords.snake[i];
 
-                var x = oldPos[0];
-                var y = oldPos[1];
+                grid[newCoords[0]][newCoords[1]] = grid[oldCoords[0]][oldCoords[1]];
+                grid[oldCoords[0]][oldCoords[1]] = '';
 
-                var part = grid[x][y];
-                grid[x][y] = '';
-
-                x = newPos[0];
-                y = newPos[1];
-
-                grid[x][y] = part;
-                snakeBody[i] = newPos;
-                newPos = oldPos;
+                coords.snake[i] = newCoords;
+                newCoords = oldCoords;
             }
         }
     }
 }
 
-// Add points to the grid
-function addPoints() {
-    var random = function(grid) {
-        var x = Math.floor(Math.random() * (grid.length));
-        var y = Math.floor(Math.random() * (grid[x].length));
-
-        return [x, y];
-    }
-
+function addPoint() {
     if (pointTimestamp + pointSpeed < Date.now()) {
         pointTimestamp = Date.now();
-
-        var xy = random(grid);
-        var x = xy[0];
-        var y = xy[1];
-
-        if (grid[x][y] == '') {
-            var point = new PIXI.Graphics();
-            point.beginFill(COLORS[1]);
-            point.drawRect(0, 0, 10, 10);
-            point.endFill();
-            stage.addChild(point);
-
-            grid[x][y] = point;
-            points.push([x, y]);
-        } else {
-            pointTimestamp = 0;
-            addPoints();
-        }
+        coords.points.push(createDot([], COLORS[1]));
     }
 }
 
-// Reset the game
 function reset() {
-    // Remove all the point dots from the map
-    for (var i = 0; i < points.length; i++) {
-        var x = points[i][0];
-        var y = points[i][1];
+    for (var i = 0; i < coords.points.length; i++) {
+        var x = coords.points[i][0];
+        var y = coords.points[i][1];
         stage.removeChild(grid[x][y]);
         grid[x][y] = '';
     }
 
-    // Remove the snake body parts from the map
-    for (var i = 0; i < snakeBody.length; i++) {
-        var x = snakeBody[i][0];
-        var y = snakeBody[i][1];
-
-        if (i > 0) {
-            stage.removeChild(grid[x][y]);
-        }
-
+    for (var i = 0; i < coords.snake.length; i++) {
+        var x = coords.snake[i][0];
+        var y = coords.snake[i][1];
+        stage.removeChild(grid[x][y]);
         grid[x][y] = '';
     }
 
@@ -221,12 +232,10 @@ function reset() {
     movementTimestamp = Date.now() + (0.5 * 1000);
     pointSpeed = POINT_SPEED;
     pointTimestamp = Date.now() - (POINT_SPEED);
-    points = [];
-    snakeX = grid.length / 2;
-    snakeY = grid[snakeX].length / 2;
-    snakeBody = [[snakeX, snakeY]];
-    grid[snakeX][snakeY] = snake;
     score = 0;
+    coords.snake = [];
+    coords.points = [];
+    coords.snake.push(createDot([grid.length/2, grid[0].length/2], COLORS[0]))
 
     // Reset the score text
     scoreText.setText("Score: " + score);
