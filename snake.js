@@ -8,7 +8,7 @@ var COLORS = [
     "0x8BAC0F",
     "0x9BBC0F"
 ];
-var MOVEMENT_SPEED = 0.2 * 1000; // Seconds to milliseconds
+var MOVEMENT_SPEED = 0.1 * 1000; // Seconds to milliseconds
 var MOVEMENT_DIRECTION = 'right';
 var POINT_SPEED = 5 * 1000 // Seconds to milliseconds
 
